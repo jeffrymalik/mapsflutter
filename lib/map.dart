@@ -13,7 +13,7 @@ class MapSample extends StatefulWidget {
 
 class MapSampleState extends State<MapSample> {
   late LatLng _newPosition;
-  late String _address = '';
+  late List<Placemark> _adress = [];
 
   @override
   void initState() {
@@ -24,10 +24,12 @@ class MapSampleState extends State<MapSample> {
 
   Future<void> _determinePosition() async {
     try {
+      final permision = await _getLocationPermissionAndPosition();
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-      final address = await _getAddress(position.latitude, position.longitude);
+      List<Placemark> adress =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
 
       final GoogleMapController controller = await _controller.future;
       controller.animateCamera(
@@ -36,10 +38,48 @@ class MapSampleState extends State<MapSample> {
 
       setState(() {
         _newPosition = LatLng(position.latitude, position.longitude);
-        _address = address;
+        _adress = adress;
       });
+
+      print(_adress);
     } catch (e) {
       print('Error getting location: $e');
+    }
+  }
+
+  Future<Position> _getLocationPermissionAndPosition() async {
+    try {
+      bool serviceEnabled;
+      LocationPermission permission;
+
+      // Test if location services are enabled.
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        // Location services are not enabled, request user to enable them.
+        throw 'Location services are disabled.';
+      }
+
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          // Permissions are denied, request permissions again.
+          throw 'Location permissions are denied';
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        // Permissions are denied forever, handle appropriately.
+        throw 'Location permissions are permanently denied, we cannot request permissions.';
+      }
+
+      // When we reach here, permissions are granted, and we can
+      // continue accessing the position of the device.
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+    } catch (e) {
+      throw e;
     }
   }
 
@@ -48,7 +88,8 @@ class MapSampleState extends State<MapSample> {
       final placemarks = await placemarkFromCoordinates(latitude, longitude);
       if (placemarks.isNotEmpty) {
         final placemark = placemarks[0];
-        return placemark.toString(); // Anda bisa mengatur format alamat sesuai kebutuhan
+        return placemark
+            .toString(); // Anda bisa mengatur format alamat sesuai kebutuhan
       } else {
         return 'No address found';
       }
@@ -58,9 +99,10 @@ class MapSampleState extends State<MapSample> {
   }
 
   Future<void> _updateAddress(LatLng newPosition) async {
-    final address = await _getAddress(newPosition.latitude, newPosition.longitude);
+    List<Placemark> adress = await placemarkFromCoordinates(
+        newPosition.latitude, newPosition.longitude);
     setState(() {
-      _address = address;
+      _adress = adress;
     });
   }
 
@@ -75,7 +117,7 @@ class MapSampleState extends State<MapSample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body:  Stack(
+      body: Stack(
         children: [
           GoogleMap(
             zoomControlsEnabled: false,
@@ -88,7 +130,8 @@ class MapSampleState extends State<MapSample> {
                   setState(() {
                     _newPosition = newPosition;
                   });
-                  _updateAddress(newPosition); // Perbarui alamat ketika marker di-drag
+                  _updateAddress(
+                      newPosition); // Perbarui alamat ketika marker di-drag
                 },
               ),
             ]),
@@ -105,49 +148,73 @@ class MapSampleState extends State<MapSample> {
               height: 300,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
+                borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(25),
+                    topRight: Radius.circular(25)),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(child: Column(
+                  Expanded(
+                      child: Column(
                     children: [
                       GestureDetector(
                         onDoubleTap: _determinePosition,
                         child: Padding(
-                          padding: EdgeInsets.only(top: 30, left: 20, right: 20),
+                          padding:
+                              EdgeInsets.only(top: 30, left: 20, right: 20),
                           child: Container(
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.all(Radius.circular(30)),
-                              color: Colors.white,
-                              boxShadow: [BoxShadow(
-                                color: Colors.grey,
-                                spreadRadius: 1,
-                                blurRadius: 1,
-                                offset: Offset(0, 1,),
-                              )]
-                            ),
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(30)),
+                                color: Colors.white,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey,
+                                    spreadRadius: 1,
+                                    blurRadius: 1,
+                                    offset: Offset(
+                                      0,
+                                      1,
+                                    ),
+                                  )
+                                ]),
                             width: double.maxFinite,
                             height: 50,
-                            child: Text('$_address',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 20,
+                            child: Text(
+                              '${_adress.isNotEmpty ? _adress[0].name : "N/A"}, ${_adress.isNotEmpty ? _adress[0].subLocality : "N/A"} ,${_adress.isNotEmpty ? _adress[0].locality : "N/A"}, ${_adress.isNotEmpty ? _adress[0].subAdministrativeArea : "N/A"}',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 15,
+                              ),
                             ),
-                            ),
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () async {
+                          final GoogleMapController controller =
+                              await _controller.future;
+                          controller.animateCamera(
+                              CameraUpdate.newLatLng(_newPosition));
+                        },
+                        child: Container(
+                          margin: EdgeInsets.only(top: 20),
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.grey,
+                            shape: BoxShape.circle,
                           ),
                         ),
                       )
                     ],
-                    
-                  ))
+                  )),
                 ],
               ),
             ),
           )
-          
-          
         ],
       ),
       // floatingActionButton: FloatingActionButton(
