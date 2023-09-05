@@ -1,6 +1,7 @@
 import 'dart:async';
-import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class MapSample extends StatefulWidget {
@@ -12,24 +13,54 @@ class MapSample extends StatefulWidget {
 
 class MapSampleState extends State<MapSample> {
   late LatLng _newPosition;
+  late String _address = '';
 
   @override
   void initState() {
     super.initState();
     _newPosition = LatLng(-6.402905, 106.778419);
+    _determinePosition();
   }
 
-  void getlocation() async {
-    await Geolocator.checkPermission();
-    await Geolocator.requestPermission();
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-    final GoogleMapController controller = await _controller.future;
-    controller.animateCamera(
-        CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)));
+  Future<void> _determinePosition() async {
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      final address = await _getAddress(position.latitude, position.longitude);
 
+      final GoogleMapController controller = await _controller.future;
+      controller.animateCamera(
+        CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
+      );
+
+      setState(() {
+        _newPosition = LatLng(position.latitude, position.longitude);
+        _address = address;
+      });
+    } catch (e) {
+      print('Error getting location: $e');
+    }
+  }
+
+  Future<String> _getAddress(double latitude, double longitude) async {
+    try {
+      final placemarks = await placemarkFromCoordinates(latitude, longitude);
+      if (placemarks.isNotEmpty) {
+        final placemark = placemarks[0];
+        return placemark.toString(); // Anda bisa mengatur format alamat sesuai kebutuhan
+      } else {
+        return 'No address found';
+      }
+    } catch (e) {
+      return 'Error: $e';
+    }
+  }
+
+  Future<void> _updateAddress(LatLng newPosition) async {
+    final address = await _getAddress(newPosition.latitude, newPosition.longitude);
     setState(() {
-      _newPosition = LatLng(position.latitude, position.longitude);
+      _address = address;
     });
   }
 
@@ -57,6 +88,7 @@ class MapSampleState extends State<MapSample> {
                   setState(() {
                     _newPosition = newPosition;
                   });
+                  _updateAddress(newPosition); // Perbarui alamat ketika marker di-drag
                 },
               ),
             ]),
@@ -70,40 +102,19 @@ class MapSampleState extends State<MapSample> {
             top: 30,
             left: 20,
             child: Container(
-              child: Text(
-                  'New Latitude: ${_newPosition.latitude}, Longitude: ${_newPosition.longitude}'),
+              child: Text('Address: $_address'),
               color: Colors.white,
               width: 300,
               height: 50,
             ),
           ),
-          Align(
-            alignment: Alignment.bottomLeft,
-            child: GestureDetector(
-              onTap: getlocation,
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.location_searching,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-          )
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final GoogleMapController controller = await _controller.future;
-          controller.animateCamera(CameraUpdate.newLatLng(_newPosition));
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          _determinePosition();
         },
-        label: const Text('Go to New Position'),
-        icon: const Icon(Icons.location_pin),
+        child: Icon(Icons.gps_fixed),
       ),
     );
   }
