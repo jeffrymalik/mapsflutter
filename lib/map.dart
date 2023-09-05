@@ -19,6 +19,8 @@ class MapSampleState extends State<MapSample> {
     _newPosition = LatLng(-6.402905, 106.778419);
   }
 
+  late String _displaytext = "Double tap here";
+
   void getlocation() async {
     await Geolocator.checkPermission();
     await Geolocator.requestPermission();
@@ -30,7 +32,9 @@ class MapSampleState extends State<MapSample> {
 
     setState(() {
       _newPosition = LatLng(position.latitude, position.longitude);
+       _displaytext = "Lat: ${position.latitude}, Lng: ${position.longitude}";
     });
+
   }
 
   final Completer<GoogleMapController> _controller =
@@ -66,45 +70,59 @@ class MapSampleState extends State<MapSample> {
               _controller.complete(controller);
             },
           ),
-          Positioned(
-            top: 30,
-            left: 20,
-            child: Container(
-              child: Text(
-                  'New Latitude: ${_newPosition.latitude}, Longitude: ${_newPosition.longitude}'),
-              color: Colors.white,
-              width: 300,
-              height: 50,
-            ),
-          ),
           Align(
-            alignment: Alignment.bottomLeft,
-            child: GestureDetector(
-              onTap: getlocation,
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.location_searching,
-                  color: Colors.black,
-                ),
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              width: double.maxFinite,
+              height: 300,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(child: Column(
+                    children: [
+                      GestureDetector(
+                        onDoubleTap: getlocation,
+                        child: Padding(
+                          padding: EdgeInsets.only(top: 30, left: 20, right: 20),
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(30)),
+                              color: Colors.white,
+                              boxShadow: [BoxShadow(
+                                color: Colors.grey,
+                                spreadRadius: 1,
+                                blurRadius: 1,
+                                offset: Offset(0, 1,),
+                              )]
+                            ),
+                            width: double.maxFinite,
+                            height: 50,
+                            child: Text(_displaytext,
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 20,
+                            ),
+                            ),
+                          ),
+                        ),
+                      )
+                    ],
+                    
+                  ))
+                ],
               ),
             ),
           )
+          
+          
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final GoogleMapController controller = await _controller.future;
-          controller.animateCamera(CameraUpdate.newLatLng(_newPosition));
-        },
-        label: const Text('Go to New Position'),
-        icon: const Icon(Icons.location_pin),
-      ),
+     
     );
   }
 }
