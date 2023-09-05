@@ -75,7 +75,7 @@ class MapSampleState extends State<MapSample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
+      body:  Stack(
         children: [
           GoogleMap(
             zoomControlsEnabled: false,
@@ -98,24 +98,64 @@ class MapSampleState extends State<MapSample> {
               _controller.complete(controller);
             },
           ),
-          Positioned(
-            top: 30,
-            left: 20,
+          Align(
+            alignment: Alignment.bottomCenter,
             child: Container(
-              child: Text('Address: $_address'),
-              color: Colors.white,
-              width: 300,
-              height: 50,
+              width: double.maxFinite,
+              height: 300,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(child: Column(
+                    children: [
+                      GestureDetector(
+                        onDoubleTap: _determinePosition,
+                        child: Padding(
+                          padding: EdgeInsets.only(top: 30, left: 20, right: 20),
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(30)),
+                              color: Colors.white,
+                              boxShadow: [BoxShadow(
+                                color: Colors.grey,
+                                spreadRadius: 1,
+                                blurRadius: 1,
+                                offset: Offset(0, 1,),
+                              )]
+                            ),
+                            width: double.maxFinite,
+                            height: 50,
+                            child: Text('$_address',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 20,
+                            ),
+                            ),
+                          ),
+                        ),
+                      )
+                    ],
+                    
+                  ))
+                ],
+              ),
             ),
-          ),
+          )
+          
+          
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _determinePosition();
-        },
-        child: Icon(Icons.gps_fixed),
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () {
+      //     _determinePosition();
+      //   },
+      //   child: Icon(Icons.gps_fixed),
+      // ),
     );
   }
 }
